@@ -1,0 +1,1 @@
+Intersect.Client.Core.Program.Main(args);

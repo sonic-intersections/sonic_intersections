@@ -1,0 +1,38 @@
+{
+	"directories": [
+		"Client and Editor",
+		"Server"
+	],
+	"includes": [
+		{
+			"source": "Intersect.Client/LICENSE.md",
+			"target": "Client and Editor/LICENSE.client.md"
+		},
+		{
+			"source": "Intersect.Client/bin/Release/**/win-x64/publish/Intersect Client.exe",
+			"target": "Client and Editor"
+		},
+		{
+			"source": "Intersect.Editor/LICENSE.md",
+			"target": "Client and Editor/LICENSE.editor.md"
+		},
+		{
+			"source": "Intersect.Editor/bin/Release/**/win-x64/publish/Intersect Editor.exe",
+			"target": "Client and Editor"
+		},
+		{
+			"source": "Intersect.Server/LICENSE.md",
+			"target": "Server/LICENSE.md"
+		},
+		{
+			"source": "Intersect.Server/bin/Release/**/win-x64/publish/Intersect Server.exe",
+			"target": "Server"
+		},
+		{
+			"source": "Documentation/Intersect Documentation.url",
+			"target": "Intersect Documentation.url"
+		}
+	],
+	"name": "patch",
+	"platform": "win-x64"
+}

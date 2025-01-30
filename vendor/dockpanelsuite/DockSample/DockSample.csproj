@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>Logo.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WinFormsUI\ThemeVS2003.csproj" />
+    <ProjectReference Include="..\WinFormsUI\ThemeVS2005.csproj" />
+    <ProjectReference Include="..\WinFormsUI\ThemeVS2012.csproj" />
+    <ProjectReference Include="..\WinFormsUI\ThemeVS2013.csproj" />
+    <ProjectReference Include="..\WinFormsUI\ThemeVS2015.csproj" />
+    <ProjectReference Include="..\WinFormsUI\WinFormsUI.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\DockPanel.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="license.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Images\Logo.ico" />
+    <Content Include="Images\SplashScreen.png" />
+    <Content Include="Logo.ico" />
+  </ItemGroup>
+</Project>

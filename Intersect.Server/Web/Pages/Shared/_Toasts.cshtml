@@ -1,0 +1,7 @@
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@model ToastModel[]
+
+@foreach (var model in Model)
+{
+    <partial name="_Toast" model="model" />
+}

@@ -1,0 +1,418 @@
+name: Intersect (main)
+
+on:
+  push:
+    branches: [ "main" ]
+    paths-ignore:
+      - '.github/**'
+      - 'Documentation/**'
+      - '.gitignore'
+      - '*.DotSettings'
+      - '*.json'
+      - '*.md'
+  workflow_dispatch:
+    inputs:
+      forceBuild:
+        description: 'If the build should be forced even on cache hit'
+        default: false
+        type: boolean
+      forceRestore:
+        description: 'If dependencies should be forced even on cache hit'
+        default: false
+        type: boolean
+      workflowDebug:
+        description: 'If the workflow should be debugged (skips packaging and publishing)'
+        default: true
+        type: boolean
+      packagingDebug:
+        description: 'If the packaging step should be debugged (skips publishing)'
+        default: true
+        type: boolean
+      skipForumPublish:
+        description: 'If publishing to the forum should be skipped'
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  VERSION_PREFIX: 0.8.0
+  VERSION_SUFFIX: -beta
+
+jobs:
+  generate-keys:
+    name: Generate Version-Specific Network Keys
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Cache binaries
+      uses: actions/cache@v4.2.0
+      id: cache-binaries
+      with:
+        key: ${{ runner.os }}-binaries-keys-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/**/*.cs*') }}
+        path: |
+          Intersect*/bin/Release/**/*
+
+    - name: Setup dotnet
+      if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
+      uses: actions/setup-dotnet@v4.1.0
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Cache NuGet dependencies
+      uses: actions/cache@v4.2.0
+      id: cache-nuget
+      if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
+      with:
+        key: ${{ runner.os }}-nuget-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/*.csproj') }}
+        path: |
+          ~/.nuget/packages
+          Intersect*/obj/
+
+    - name: Apply environment patches
+      run: git apply disable-windows-editor.patch
+
+    - name: Restore NuGet Packages
+      if: steps.cache-binaries.outputs.cache-hit != 'true' && steps.cache-nuget.outputs.cache-hit != 'true' || inputs.forceRestore == true
+      run: dotnet restore Intersect.sln
+
+    - name: Build Intersect.Network
+      if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
+      run: dotnet build Intersect.Network/Intersect.Network.csproj --sc -r linux-x64 -p:Configuration=Release -p:PackageVersion=${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}.${{ github.run_number }}+build.${{ github.sha }} -p:Version=${{ env.VERSION_PREFIX }}.${{ github.run_number }}
+
+    - name: Debug files on disk
+      if: inputs.workflowDebug == true
+      run: ls -laR .
+
+    - name: Upload keys
+      uses: actions/upload-artifact@v4.5.0
+      with:
+        if-no-files-found: error
+        name: keys
+        path: ./Intersect.Network/bin/Release/keys/*
+
+  build-linux:
+    name: Build for Linux
+    needs: [generate-keys]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Cache binaries
+      uses: actions/cache@v4.2.0
+      id: cache-binaries
+      with:
+        key: ${{ runner.os }}-binaries-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/**/*.cs*') }}
+        path: |
+          Intersect*/bin/Release/**/*
+
+    - name: Setup dotnet
+      if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
+      uses: actions/setup-dotnet@v4.1.0
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Cache NuGet dependencies
+      uses: actions/cache@v4.2.0
+      id: cache-nuget
+      if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
+      with:
+        key: ${{ runner.os }}-nuget-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/*.csproj') }}
+        path: |
+          ~/.nuget/packages
+          Intersect*/obj/
+
+    - name: Apply environment patches
+      run: git apply disable-windows-editor.patch
+
+    - name: Restore NuGet Packages
+      if: steps.cache-binaries.outputs.cache-hit != 'true' && steps.cache-nuget.outputs.cache-hit != 'true' || inputs.forceRestore == true
+      run: dotnet restore Intersect.sln
+
+    - name: Download keys
+      uses: actions/download-artifact@v4.1.8
+      with:
+        name: keys
+        path: ./Intersect.Network/bin/Release/keys/
+
+    - name: Debug keys
+      run: ls -laR ./Intersect.Network/bin/Release/keys
+
+    - name: Build solution
+      if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
+      run: dotnet publish Intersect.sln --sc -r linux-x64 -p:Configuration=Release -p:PackageVersion=${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}.${{ github.run_number }}+build.${{ github.sha }} -p:Version=${{ env.VERSION_PREFIX }}.${{ github.run_number }}
+
+    - name: Tarball artifacts to maintain unix file permissions
+      run: tar -cvf linux.tar Intersect.Client/bin/Release/*/*/publish Intersect.Server/bin/Release/*/*/publish
+
+    - name: Debug files on disk
+      if: inputs.workflowDebug == true
+      run: ls -laR .
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4.5.0
+      with:
+        if-no-files-found: error
+        name: engine-${{ runner.os }}
+        path: linux.tar
+
+  build-macos:
+    name: Build for MacOS
+    needs: [generate-keys]
+    runs-on: macos-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Cache binaries
+      uses: actions/cache@v4.2.0
+      id: cache-binaries
+      with:
+        key: ${{ runner.os }}-binaries-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/**/*.cs*') }}
+        path: |
+          Intersect*/bin/Release/**/*
+
+    - name: Setup dotnet
+      if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
+      uses: actions/setup-dotnet@v4.1.0
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Cache NuGet dependencies
+      uses: actions/cache@v4.2.0
+      id: cache-nuget
+      if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
+      with:
+        key: ${{ runner.os }}-nuget-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/*.csproj') }}
+        path: |
+          ~/.nuget/packages
+          Intersect*/obj/
+
+    - name: Apply environment patches
+      run: git apply disable-windows-editor.patch
+
+    - name: Restore NuGet Packages
+      if: steps.cache-binaries.outputs.cache-hit != 'true' && steps.cache-nuget.outputs.cache-hit != 'true' || inputs.forceRestore == true
+      run: dotnet restore Intersect.sln
+
+    - name: Download keys
+      uses: actions/download-artifact@v4.1.8
+      with:
+        name: keys
+        path: ./Intersect.Network/bin/Release/keys/
+
+    - name: Debug keys
+      run: ls -laR ./Intersect.Network/bin/Release/keys
+
+    - name: Build solution
+      if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
+      run: dotnet publish Intersect.sln --sc -r osx-x64   -p:Configuration=Release -p:PackageVersion=${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}.${{ github.run_number }}+build.${{ github.sha }} -p:Version=${{ env.VERSION_PREFIX }}.${{ github.run_number }}
+
+    - name: Tarball artifacts to maintain unix file permissions
+      run: tar -cvf osx.tar Intersect.Client/bin/Release/*/*/publish Intersect.Server/bin/Release/*/*/publish
+
+    - name: Debug files on disk
+      if: inputs.workflowDebug == true
+      run: ls -laR .
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4.5.0
+      with:
+        if-no-files-found: error
+        name: engine-${{ runner.os }}
+        path: osx.tar
+
+  build-windows:
+    name: Build for Windows
+    needs: [generate-keys]
+    runs-on: windows-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Cache binaries
+      uses: actions/cache@v4.2.0
+      id: cache-binaries
+      with:
+        key: ${{ runner.os }}-binaries-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/**/*.cs*') }}
+        path: |
+          Intersect*/bin/Release/**/*
+
+    - name: Setup dotnet
+      if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
+      uses: actions/setup-dotnet@v4.1.0
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Cache NuGet dependencies
+      uses: actions/cache@v4.2.0
+      id: cache-nuget
+      if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
+      with:
+        key: ${{ runner.os }}-nuget-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/*.csproj') }}
+        path: |
+          ~/.nuget/packages
+          Intersect*/obj/
+
+    - name: Apply environment patches
+      run: echo "No patches to apply for Windows"
+
+    - name: Restore NuGet Packages
+      if: steps.cache-binaries.outputs.cache-hit != 'true' && steps.cache-nuget.outputs.cache-hit != 'true' || inputs.forceRestore == true
+      run: dotnet restore Intersect.sln
+
+    - name: Download keys
+      uses: actions/download-artifact@v4.1.8
+      with:
+        name: keys
+        path: ./Intersect.Network/bin/Release/keys/
+
+    - name: Debug keys
+      run: ls -laR ./Intersect.Network/bin/Release/keys
+      shell: bash
+
+    - name: Build solution
+      if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
+      run: dotnet publish Intersect.sln --sc -r win-x64   -p:Configuration=Release -p:PackageVersion=${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}.${{ github.run_number }}+build.${{ github.sha }} -p:Version=${{ env.VERSION_PREFIX }}.${{ github.run_number }}
+
+    - name: Tarball artifacts to maintain unix file permissions
+      run: tar -cvf win.tar Intersect.Client/bin/Release/*/*/publish Intersect.Editor/bin/Release/*/*/publish Intersect.Server/bin/Release/*/*/publish
+      shell: bash
+
+    - name: Debug files on disk
+      if: inputs.workflowDebug == true
+      run: ls -laR .
+      shell: bash
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4.5.0
+      with:
+        if-no-files-found: error
+        name: engine-${{ runner.os }}
+        path: win.tar
+
+  debug-build-artifacts:
+    name: Debug Build Artifacts
+    if: inputs.workflowDebug == true
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4.1.8
+        with:
+          pattern: engine-*
+          merge-multiple: true
+          path: .
+
+      - name: Extract build archives
+        run: |
+          tar -xvf linux.tar
+          tar -xvf osx.tar
+          tar -xvf win.tar
+
+      - name: Debug output
+        run: ls -laR .
+
+  publish-github:
+    name: Publish GitHub Release
+    if: inputs.workflowDebug != true
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4.1.8
+        with:
+          pattern: engine-*
+          merge-multiple: true
+          path: .
+
+      - name: Extract build archives
+        run: |
+          tar -xvf linux.tar
+          tar -xvf osx.tar
+          tar -xvf win.tar
+
+      - name: Checkout assets main_upgrade branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: assets_upgrade
+          repository: AscensionGameDev/Intersect-Assets
+          ref: main_upgrade
+          token: ${{ secrets.INTERSECTBOT_ACCESS_TOKEN }}
+
+      - name: Checkout target main_full branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: assets_full
+          repository: AscensionGameDev/Intersect-Assets
+          ref: main_full
+          token: ${{ secrets.INTERSECTBOT_ACCESS_TOKEN }}
+
+      - name: Package artifacts
+        uses: AscensionGameDev/actions@cc2eb0e356546042e4dc7eca6788fd0b5a063b32
+        with:
+          bundle: .github/bundles/*.json
+          version: ${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}.${{ github.run_number }}+build.${{ github.sha }}
+
+      - name: Debug packaging output
+        if: inputs.packagingDebug == true
+        run: ls -laR ./dist
+
+      - name: Publish GitHub Release
+        if: inputs.packagingDebug != true
+        uses: ncipollo/release-action@v1.13.0
+        with:
+          artifacts: "dist/**/*.zip"
+          commit: ${{ github.sha }}
+          generateReleaseNotes: true
+          name: ${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}.${{ github.run_number }}
+          prerelease: true
+          tag: v${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}.${{ github.run_number }}
+
+  check-publish-forum:
+    name: Check if token set to publish to forum
+    if: inputs.workflowDebug != true && inputs.packagingDebug != true && inputs.skipForumPublish != true
+    needs: publish-github
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check-INTERSECTBOT_FORUM_TOKEN.outputs.skip == 'true' }}
+    steps:
+      - id: check-INTERSECTBOT_FORUM_TOKEN
+        name: Check INTERSECTBOT_FORUM_TOKEN
+        env:
+          INTERSECTBOT_FORUM_TOKEN: ${{ secrets.INTERSECTBOT_FORUM_TOKEN }}
+        if: ${{ env.INTERSECTBOT_FORUM_TOKEN == '' }}
+        run: echo "skip=true" >> "$GITHUB_OUTPUT"
+
+  publish-forum:
+    name: Publish to Forum
+    if: inputs.workflowDebug != true && inputs.packagingDebug != true && inputs.skipForumPublish != true && needs.check-publish-forum.outputs.skip != 'true'
+    needs: check-publish-forum
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish to Forum
+        uses: AscensionGameDev/actions@0223df40becb110039c705c02cfd2cd8f274199c
+        with:
+          api-key: ${{ secrets.INTERSECTBOT_FORUM_TOKEN }}
+          build: ${{ github.run_number }}
+          hash: ${{ github.sha }}
+          runtime-identifiers: linux-x64,osx-x64,win-x64
+          topic-id: ${{ vars.INTERSECTBOT_FORUM_TOPIC_ID }}
+          version: ${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}
