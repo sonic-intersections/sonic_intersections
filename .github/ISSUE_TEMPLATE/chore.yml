@@ -1,7 +1,6 @@
 name: Chore
 description: Suggest a change that involves 
 labels: ["chore"]
-type: Task
 title: 'chore: '
 assignees: []
 body:
