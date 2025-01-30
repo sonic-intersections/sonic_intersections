@@ -9,8 +9,6 @@ body:
     attributes:
       value: |
         Thanks for taking the time to fill out this bug report! Please make sure to add as much detail as you can, preferably with video or imagery. This will help us diagnose the issue faster and thus resolve it quicker.
-
-        If this bug presents itself in a project with custom source code modifications/edits please make sure the bug also exists in the vanilla engine builds before sharing.
   - type: textarea
     id: description
     attributes:
@@ -23,7 +21,7 @@ body:
     id: repro-steps
     attributes:
       label: Steps to Reproduce
-      description: "Describe all the steps we need to take to show the behavior that you have observed. Also, include what you expected to happen and what did actually happen. If this bug the result of undesirable actions with configured game objects (ie: resources, spells, npcs, items, events, etc) please also include image of the related configurations for those game objects."
+      description: "Describe all the steps we need to take to show the behavior that you have observed. Also, include what you expected to happen and what did actually happen."
       placeholder: |
         1. Step 1...
         2. Step 2...
@@ -34,24 +32,6 @@ body:
         Actual outcome: all was fine
     validations:
       required: true
-  - type: input
-    id: version-with-bug
-    attributes:
-      label: Version with bug
-      description: Please provide the version number of Intersect that you are seeing this bug with.
-      placeholder: E.g. v7.1.22
-    validations:
-      required: true
-      email: true
-  - type: input
-    id: version-that-worked
-    attributes:
-      label: Last version that worked well
-      description: Is there a version of Intersect on which this _did_ work? If yes, please provide the version number, otherwise enter 'Unknown'.
-      placeholder: E.g. v0.8.0 or Unknown
-    validations:
-      required: true
-      email: true
   - type: dropdown
     id: platforms-affected
     attributes:
