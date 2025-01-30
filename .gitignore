@@ -217,9 +217,5 @@ packages/
 .vs/
 .idea
 
-/staging/**
-!/staging/*.*
-
-/development/**
-!/development/*.*
-
+/assets/**
+!/assets/*.*
