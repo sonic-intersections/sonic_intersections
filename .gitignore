@@ -6,7 +6,8 @@
 .project
 .metadata
 bin/
-assets/
+development/
+staging/
 tmp/
 *.tmp
 *.bak
@@ -215,6 +216,3 @@ packages/
 
 .vs/
 .idea
-
-/assets/**
-!/assets/*.*
