@@ -208,6 +208,9 @@ public abstract partial class Entity : IEntity
     public long AttackTimer { get; set; }
 
     [NotMapped, JsonIgnore]
+    public AttackType LastAttackType { get; set; } = AttackType.None;
+
+    [NotMapped, JsonIgnore]
     public Entity CastTarget { get; set; }
 
     [NotMapped, JsonIgnore]
@@ -2138,6 +2141,15 @@ public abstract partial class Entity : IEntity
         }
 
         //Calculate Damages
+
+        var thisPlayer = this as Player;
+
+        if (this is Player)
+        {
+            baseDamage = (int)Math.Round(baseDamage * thisPlayer.ComboDamageMultiplier());
+
+        }
+
         if (baseDamage != 0)
         {
 
@@ -2249,8 +2261,6 @@ public abstract partial class Entity : IEntity
         // Set combat timers!
         enemy.CombatTimer = Timing.Global.Milliseconds + Options.Instance.Combat.CombatTime;
         CombatTimer = Timing.Global.Milliseconds + Options.Instance.Combat.CombatTime;
-
-        var thisPlayer = this as Player;
 
         //Check for lifesteal/manasteal
         if (this is Player && !(enemy is Resource))

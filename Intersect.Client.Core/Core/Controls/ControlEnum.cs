@@ -81,4 +81,8 @@ public enum Control
     HoldToZoomOut,
 
     ToggleFullscreen,
+
+    LightAttack,
+
+    HeavyAttack,
 }

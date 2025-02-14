@@ -843,6 +843,13 @@ internal sealed partial class PacketHandler
         {
             PacketSender.SendEntityPositionTo(client, client.Entity);
         }
+
+        var comboTimeout = player.ClientAttackTimer > 0 && player.ClientLastAttackTimer > 0 && player.ClientAttackTimer - player.ClientLastAttackTimer > 3000;
+
+        if (comboTimeout)
+        {
+            player.ResetCombo();
+        }
     }
 
     //ChatMsgPacket
@@ -1196,6 +1203,7 @@ internal sealed partial class PacketHandler
         var target = packet.Target;
 
         var clientTime = packet.Adjusted / TimeSpan.TicksPerMillisecond;
+        var attackType = packet.AttackType;
         if (player.ClientAttackTimer > clientTime ||
             (!Options.Instance.Player.AllowCombatMovement && player.ClientMoveTimer > clientTime))
         {
@@ -1293,9 +1301,27 @@ internal sealed partial class PacketHandler
                 break;
         }
 
-        PacketSender.SendEntityAttack(player, player.CalculateAttackTime());
-
         player.ClientAttackTimer = clientTime + player.CalculateAttackTime();
+
+        // Calculate combo.
+
+        if (attackType != AttackType.None)
+        {
+            player.LastAttackType = attackType;
+            var comboTimeout = player.ClientAttackTimer > 0 && player.ClientLastAttackTimer > 0 && player.ClientAttackTimer - player.ClientLastAttackTimer > 3000;
+            if (comboTimeout || player.ComboStep >= 3)
+            {
+                player.ResetCombo();
+                player.ClientLastAttackTimer = 0;
+            }
+            else
+            {
+                player.ComboStep += 1;
+                player.ClientLastAttackTimer = player.ClientAttackTimer;
+            }
+            PacketSender.SendChatMsg(player, $"You're on combo step {player.ComboStep} attack type {player.LastAttackType}", ChatMessageType.Local);
+            PacketSender.SendEntityAttack(player, player.CalculateAttackTime());
+        } 
 
         //Fire projectile instead if weapon has it
 

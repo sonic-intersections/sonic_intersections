@@ -16,7 +16,6 @@ using Intersect.Core;
 using Intersect.Enums;
 using Intersect.Framework.Core.GameObjects.Animations;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Animations;
 using Intersect.GameObjects.Maps;
 using Intersect.Network.Packets.Server;
 using Intersect.Utilities;
@@ -1929,11 +1928,17 @@ public partial class Entity : IEntity
             var timeInAttack = CalculateAttackTime() - (AttackTimer - timingMilliseconds);
             LastActionTime = Timing.Global.Milliseconds;
 
-            if (AnimatedTextures.TryGetValue(SpriteAnimations.Attack, out _))
+            var player = this as Player;
+            var isHeavyAttack = player.LastAttackType == AttackType.HeavyAttack ? 3 : 0;
+            var comboAnim = (int)SpriteAnimations.Weapon + player.ComboStep + isHeavyAttack;
+            if (this is Player && player.LastAttackType != AttackType.None && AnimatedTextures.TryGetValue((SpriteAnimations)comboAnim, out _))
+            {
+                SpriteAnimation = (SpriteAnimations)comboAnim;
+            }
+            else if (AnimatedTextures.TryGetValue(SpriteAnimations.Attack, out _))
             {
                 SpriteAnimation = SpriteAnimations.Attack;
             }
-
             if (Options.Instance.Equipment.WeaponSlot > -1 && Options.Instance.Equipment.WeaponSlot < Equipment.Length)
             {
                 if (Equipment[Options.Instance.Equipment.WeaponSlot] != Guid.Empty && this != Globals.Me ||
@@ -2068,7 +2073,12 @@ public partial class Entity : IEntity
             // No override for these animations.
             case SpriteAnimations.Normal:
             case SpriteAnimations.Idle:
-
+            case SpriteAnimations.Attack_Light_1:
+            case SpriteAnimations.Attack_Light_2:
+            case SpriteAnimations.Attack_Light_3:
+            case SpriteAnimations.Attack_Heavy_1:
+            case SpriteAnimations.Attack_Heavy_2:
+            case SpriteAnimations.Attack_Heavy_3:
                 break;
 
             case SpriteAnimations.Attack:
@@ -2144,9 +2154,16 @@ public partial class Entity : IEntity
         var extension = Path.GetExtension(textureName);
         var animationTextureName = $"{baseFilename}_{spriteAnimation.ToString()?.ToLowerInvariant() ?? string.Empty}";
 
-        if (!string.IsNullOrWhiteSpace(textureOverride))
+        if (!string.IsNullOrWhiteSpace(textureOverride) || ((int)spriteAnimation > (int)SpriteAnimations.Weapon))
         {
-            animationTextureName = $"{animationTextureName}_{textureOverride}";
+            if (string.IsNullOrWhiteSpace(textureOverride))
+            {
+                animationTextureName = $"{animationTextureName}";
+            }
+            else
+            {
+                animationTextureName = $"{animationTextureName}_{textureOverride}";
+            }
         }
 
         texture = Globals.ContentManager.GetTexture(TextureType.Entity, $"{animationTextureName}{extension}");

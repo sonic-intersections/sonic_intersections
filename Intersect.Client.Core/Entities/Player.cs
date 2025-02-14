@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using Intersect.Client.Core;
 using Intersect.Client.Core.Controls;
 using Intersect.Client.Entities.Events;
@@ -236,12 +237,34 @@ public partial class Player : Entity, IPlayer
                  Globals.InTrade == false &&
                  !Interface.Interface.HasInputFocus());
 
+    public bool ControlIsAttack => Controls.KeyDown(Control.AttackInteract)
+                                    || Controls.KeyDown(Control.LightAttack)
+                                    || Controls.KeyDown(Control.HeavyAttack);
+
+    public int ComboStep { get; set; } = 0;
+
+    public void ResetCombo()
+    {
+        ComboStep = 0;
+        LastAttackTimer = 0;
+    }
+
+    public AttackType LastAttackType { get; set; }
+
+    public long LastAttackTimer { get; set; } = 0;
+
     public override bool Update()
     {
 
         if (Globals.Me == this)
         {
             HandleInput();
+        }
+
+        var comboTimeout = AttackTimer > 0 && LastAttackTimer > 0 && AttackTimer - LastAttackTimer > 3000;
+
+        if (comboTimeout) {
+            ResetCombo();
         }
 
         if (!IsBusy)
@@ -251,7 +274,7 @@ public partial class Player : Entity, IPlayer
                 ProcessDirectionalInput();
             }
 
-            if (Controls.KeyDown(Control.AttackInteract))
+            if (ControlIsAttack)
             {
                 if (IsCasting)
                 {
@@ -1853,8 +1876,29 @@ public partial class Player : Entity, IPlayer
                 }
 
                 // Attack the entity.
-                PacketSender.SendAttack(en.Key);
+
+                var attackType = Controls.KeyDown(Control.HeavyAttack) ? AttackType.HeavyAttack
+                    : Controls.KeyDown(Control.LightAttack) ? AttackType.LightAttack
+                    : AttackType.None;
+
+                LastAttackType = attackType;
                 AttackTimer = Timing.Global.Milliseconds + CalculateAttackTime();
+                // Calculate combo.
+
+                if (attackType != AttackType.None)
+                {
+                    var comboTimeout = AttackTimer > 0 && LastAttackTimer > 0 && AttackTimer - LastAttackTimer > 3000;
+
+                    if (comboTimeout || ComboStep >= 3)
+                    {
+                        ResetCombo();
+                    }
+
+                    ComboStep += 1;
+                    LastAttackTimer = AttackTimer;
+                }
+
+                PacketSender.SendAttack(en.Key, LastAttackType);
 
                 return true;
             }
@@ -1884,7 +1928,7 @@ public partial class Player : Entity, IPlayer
         }
 
         //Projectile/empty swing for animations
-        PacketSender.SendAttack(Guid.Empty);
+        PacketSender.SendAttack(Guid.Empty, AttackType.None);
         AttackTimer = Timing.Global.Milliseconds + CalculateAttackTime();
 
         return true;

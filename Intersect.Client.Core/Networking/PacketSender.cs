@@ -111,9 +111,9 @@ public static partial class PacketSender
         Network.SendPacket(new ChatMsgPacket(msg, channel));
     }
 
-    public static void SendAttack(Guid targetId)
+    public static void SendAttack(Guid targetId, AttackType attackType)
     {
-        Network.SendPacket(new AttackPacket(targetId));
+        Network.SendPacket(new AttackPacket(targetId, attackType));
     }
 
     public static void SendBlock(bool blocking)
