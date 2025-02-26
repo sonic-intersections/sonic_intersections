@@ -65,6 +65,8 @@ public partial class Controls
         CreateControlMap(Control.MoveLeft, new ControlValue(Keys.None, Keys.Left), new ControlValue(Keys.None, Keys.A));
         CreateControlMap(Control.MoveRight, new ControlValue(Keys.None, Keys.Right), new ControlValue(Keys.None, Keys.D));
         CreateControlMap(Control.AttackInteract, new ControlValue(Keys.None, Keys.E), new ControlValue(Keys.None, Keys.LButton));
+        CreateControlMap(Control.LightAttack, new ControlValue(Keys.None, Keys.Z), new ControlValue(Keys.None, Keys.RControlKey));
+        CreateControlMap(Control.HeavyAttack, new ControlValue(Keys.None, Keys.X), new ControlValue(Keys.None, Keys.Alt));
         CreateControlMap(Control.Block, new ControlValue(Keys.None, Keys.Q), new ControlValue(Keys.None, Keys.RButton));
         CreateControlMap(Control.AutoTarget, new ControlValue(Keys.None, Keys.Tab), ControlValue.Default);
         CreateControlMap(Control.HoldToSoftRetargetOnSelfCast, new ControlValue(Keys.None, Keys.LMenu), ControlValue.Default);
@@ -94,7 +96,7 @@ public partial class Controls
         CreateControlMap(Control.OpenDebugger, new ControlValue(Keys.None, Keys.F2), ControlValue.Default);
         CreateControlMap(Control.OpenAdminPanel, new ControlValue(Keys.None, Keys.Insert), ControlValue.Default);
         CreateControlMap(Control.ToggleGui, new ControlValue(Keys.None, Keys.F11), ControlValue.Default);
-        CreateControlMap(Control.TurnAround, new ControlValue(Keys.None, Keys.Control), ControlValue.Default);
+        CreateControlMap(Control.TurnAround, new ControlValue(Keys.None, Keys.End), ControlValue.Default);
         CreateControlMap(Control.ToggleZoomIn, ControlValue.Default, ControlValue.Default);
         CreateControlMap(Control.ToggleZoomOut, ControlValue.Default, ControlValue.Default);
         CreateControlMap(Control.HoldToZoomIn, ControlValue.Default, ControlValue.Default);

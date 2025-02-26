@@ -177,6 +177,25 @@ public partial class ClassBase : DatabaseObject<ClassBase>, IFolderable
 
     public string AttackSpriteOverride { get; set; }
 
+    [NotMapped]
+    public long ComboResetTime { get; set; } = 2000;
+
+    [NotMapped]
+    public int MaxComboStep { get; set; } = 3;
+
+    [NotMapped]
+    public Dictionary<int, double[]> comboDamageMultipliers { get; set; } = new()
+    {
+        { 0, [1.0, 1.15, 1.3] },
+        { 1, [1.2, 1.5, 1.7] }
+    };
+    [NotMapped]
+    public Dictionary<int, double[]> comboSpeedMultipliers { get; set; } = new()
+    {
+        { 0, [1.0, 1.1, 0.2] },
+        { 1, [0.8, 0.9, 0.2] }
+    };
+
     public long BaseExp
     {
         get => mBaseExp;
@@ -330,6 +349,15 @@ public partial class ClassBase : DatabaseObject<ClassBase>, IFolderable
         }
 
         return ExperienceCurve.Calculate(level);
+    }
+
+    public Dictionary<AttackType, string[]> GetComboAttackSprites()
+    {
+        return new Dictionary<AttackType, string[]> 
+        {
+            { AttackType.LightAttack, ["attack_light_1", "attack_light_2", "attack_light_3"] },
+            { AttackType.HeavyAttack, ["attack_heavy_1", "attack_heavy_2", "attack_heavy_3"] },
+        };
     }
 }
 

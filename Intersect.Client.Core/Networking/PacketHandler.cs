@@ -351,6 +351,7 @@ internal sealed partial class PacketHandler
             if (packet.IsSelf)
             {
                 Globals.Me = (Player) Globals.Entities[packet.EntityId];
+                Globals.Me.LoadTextures(Globals.Me.Sprite);
             }
         }
         else

@@ -290,6 +290,57 @@ public partial class Player : Entity
     [NotMapped, JsonIgnore]
     public ItemBase LastAttackingWeapon { get; set; }
 
+    [NotMapped, JsonIgnore]
+    public int ComboStep { get; set; } = 0;
+
+    public double ComboSpeedMultiplier()
+    {
+        var classBase = ClassBase.Get(ClassId);
+        
+        if (classBase == null)
+        {
+            return 1;
+        }
+
+        if (classBase.comboSpeedMultipliers.TryGetValue((int)LastAttackType, out var speedMultipliers)) 
+        {
+            return speedMultipliers[ComboStep - 1];
+        };
+
+        return 1;
+    }
+
+    public double ComboDamageMultiplier()
+    {
+        var classBase = ClassBase.Get(ClassId);
+
+        if (classBase == null)
+        {
+            return 1;
+        }
+
+        if (LastAttackType == AttackType.None)
+        {
+            return 1;
+        }
+
+        if (classBase.comboDamageMultipliers.TryGetValue((int)LastAttackType, out var damageMultipliers))
+        {
+            return damageMultipliers[ComboStep - 1];
+        };
+
+        return 1;
+    }
+
+    [NotMapped]
+    public long ClientLastAttackTimer { get; set; } = 0;
+
+    public void ResetCombo()
+    {
+        ComboStep = 1;
+        ClientLastAttackTimer = 0;
+    }
+
     // Instancing
     public MapInstanceType InstanceType { get; set; } = MapInstanceType.Overworld;
 
